@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from groq import stream_llm_response
 
 from fastapi.responses import RedirectResponse
-
+from fastapi.middleware.cors import CORSMiddleware
 from process_pdf import ingest_pdf
 from groq import generate_llm_response
 from prompt_handler import set_llm_prompt
@@ -28,7 +28,15 @@ class ChatRequest(BaseModel):
 	question: str
 	k: Optional[int] = 3
 	history: Optional[List[dict]] = None
-     
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 
 # Streaming chat endpoint
 @app.post("/chat_stream/")

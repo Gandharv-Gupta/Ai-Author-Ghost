@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Author's Ghost</title>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      color: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      color: #a855f7;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      background: linear-gradient(90deg, #a855f7, #ec4899, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo p {
+      font-size: 0.7rem;
+      color: rgba(196, 181, 253, 0.6);
+    }
+
+    .upload-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 50px;
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #c4b5fd;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .upload-btn:hover {
+      background: rgba(168, 85, 247, 0.3);
+      transform: scale(1.05);
+    }
+
+    /* Chat Area */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Welcome Screen */
+    .welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .welcome-icon {
+      width: 100px;
+      height: 100px;
+      color: rgba(168, 85, 247, 0.3);
+      margin-bottom: 1.5rem;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .welcome h2 {
+      color: #c4b5fd;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+    }
+
+    .welcome p {
+      color: rgba(168, 85, 247, 0.6);
+      max-width: 400px;
+    }
+
+    .suggestions {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .suggestion-btn {
+      text-align: left;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(168, 85, 247, 0.1);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      color: #c4b5fd;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.9rem;
+    }
+
+    .suggestion-btn:hover {
+      background: rgba(168, 85, 247, 0.2);
+    }
+
+    /* Messages */
+    .message {
+      display: flex;
+      max-width: 80%;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      justify-content: flex-end;
+    }
+
+    .message.author {
+      align-self: flex-start;
+    }
+
+    .message-content {
+      padding: 12px 18px;
+      border-radius: 18px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .message.user .message-content {
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      border-bottom-right-radius: 4px;
+      color: #fff;
+    }
+
+    .message.author .message-content {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      border-bottom-left-radius: 4px;
+      color: #e6eef8;
+    }
+
+    .author-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #a855f7;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .author-label svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #a855f7;
+      font-size: 0.9rem;
+    }
+
+    .loading-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background: #a855f7;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .loading-dots span:nth-child(1) { animation-delay: 0s; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Input Area */
+    .input-area {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(168, 85, 247, 0.2);
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 12px;
+    }
+
+    .input-wrapper input {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 14px;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      background: rgba(30, 41, 59, 0.5);
+      color: white;
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .input-wrapper input::placeholder {
+      color: rgba(168, 85, 247, 0.5);
+    }
+
+    .input-wrapper input:focus {
+      border-color: rgba(168, 85, 247, 0.6);
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+    }
+
+    .send-btn {
+      padding: 14px 24px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      border: none;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: scale(1.05);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 100;
+    }
+
+    .modal {
+      background: #0f172a;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 20px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 25px 50px rgba(168, 85, 247, 0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.2rem;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .close-btn:hover {
+      color: white;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(168, 85, 247, 0.3);
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: #a855f7;
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .dropzone svg {
+      width: 50px;
+      height: 50px;
+      color: #a855f7;
+      margin-bottom: 1rem;
+    }
+
+    .dropzone p {
+      color: #c4b5fd;
+    }
+
+    .dropzone .hint {
+      font-size: 0.8rem;
+      color: rgba(168, 85, 247, 0.5);
+      margin-top: 0.5rem;
+    }
+
+    .status-msg {
+      margin-top: 1rem;
+      padding: 12px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-msg.success {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+    }
+
+    .status-msg.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <i data-lucide="ghost" class="logo-icon"></i>
+      <div>
+        <h1>Author's Ghost</h1>
+        <p>Summon the spirit of any book</p>
+      </div>
+    </div>
+    <button class="upload-btn" onclick="toggleModal()">
+      <i data-lucide="book-open" style="width:18px;height:18px"></i>
+      Upload Book
+    </button>
+  </header>
+
+  <main>
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <i data-lucide="ghost" class="welcome-icon"></i>
+        <h2>Welcome, Seeker</h2>
+        <p>Upload a book and ask questions. The author's spirit will respond through me, drawing from the wisdom within their pages.</p>
+        <div class="suggestions">
+          <button class="suggestion-btn" onclick="useSuggestion('What is this book about?')">What is this book about?</button>
+          <button class="suggestion-btn" onclick="useSuggestion('Who is the main character?')">Who is the main character?</button>
+          <button class="suggestion-btn" onclick="useSuggestion('What are the key themes?')">What are the key themes?</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <input type="text" id="userInput" placeholder="Ask the author's spirit..." onkeypress="handleKeyPress(event)">
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <i data-lucide="send" style="width:20px;height:20px"></i>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Upload Modal -->
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Upload a Book</h2>
+        <button class="close-btn" onclick="toggleModal()">
+          <i data-lucide="x" style="width:20px;height:20px"></i>
+        </button>
+      </div>
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <i data-lucide="upload"></i>
+        <p id="dropzoneText">Drop your PDF here or click to browse</p>
+        <p class="hint">PDF files only</p>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="handleFileSelect(event)">
+      <div id="statusMsg" class="status-msg hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:8000";
+
+    // ---------- Persisted history (sessionStorage) ----------
+    const HISTORY_KEY = "authors_ghost_history_v1";
+
+    function loadHistory() {
+      try {
+        const raw = sessionStorage.getItem(HISTORY_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        console.warn("Failed to parse history:", e);
+        return [];
+      }
+    }
+
+    function saveHistory(h) {
+      try {
+        sessionStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+      } catch (e) {
+        console.warn("Failed to save history:", e);
+      }
+    }
+
+    let history = loadHistory(); // array of {role, content}
+
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // On load: rehydrate messages UI from history
+    window.addEventListener("DOMContentLoaded", () => {
+      const messagesEl = document.getElementById('messages');
+
+      // If there is history, hide welcome and render it
+      if (history && history.length > 0) {
+        document.getElementById('welcome')?.classList.add('hidden');
+        history.forEach(turn => addMessage(turn.content, turn.role, {persist: false}));
+      }
+      // ensure icons are created for any added icons
+      lucide.createIcons();
+      // scroll to bottom
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+
+    // ---------- Helper: escape HTML to avoid injection ----------
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    // ---------- Modal & upload helpers ----------
+    function toggleModal() {
+      document.getElementById('modal').classList.toggle('hidden');
+      document.getElementById('statusMsg').classList.add('hidden');
+      document.getElementById('dropzone').classList.remove('drag-over');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('dropzone').classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.preventDefault();
+      document.getElementById('dropzone').classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('dropzone').classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      uploadFile(file);
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      uploadFile(file);
+    }
+
+    async function uploadFile(file) {
+      const dropText = document.getElementById('dropzoneText');
+      if (!file || file.type !== 'application/pdf') {
+        showStatus('Please select a PDF file', 'error');
+        return;
+      }
+
+      dropText.textContent = 'Uploading...';
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch(`${API_URL}/upload_pdf/`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (res.ok) {
+          showStatus('Book uploaded successfully!', 'success');
+          // small delay then close modal
+          setTimeout(() => toggleModal(), 1400);
+        } else {
+          let data;
+          try { data = await res.json(); } catch (e) { data = null; }
+          showStatus((data && data.message) ? data.message : 'Upload failed', 'error');
+        }
+      } catch (e) {
+        showStatus('Connection error. Is the server running?', 'error');
+      } finally {
+        dropText.textContent = 'Drop your PDF here or click to browse';
+      }
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('statusMsg');
+      el.textContent = msg;
+      el.className = `status-msg ${type}`;
+      el.classList.remove('hidden');
+    }
+
+    // ---------- Suggestions / Input handling ----------
+    function useSuggestion(text) {
+      document.getElementById('userInput').value = text;
+      sendMessage();
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    // ---------- Chat send / receive ----------
+    // Create a unique id for loading messages
+    function uniqueId(prefix = 'id') {
+      return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const msg = (input.value || '').trim();
+      if (!msg) return;
+
+      // hide welcome screen
+      document.getElementById('welcome')?.classList.add('hidden');
+
+      // add user message to UI + history
+      addMessage(msg, 'user');
+      history.push({ role: 'user', content: msg });
+      saveHistory(history);
+
+      input.value = '';
+
+      // show loading bubble and call API
+      const loadingId = showLoading();
+
+      try {
+        const payload = {
+          question: msg,
+          k: 3,
+          history: history
+        };
+
+        const res = await fetch(`${API_URL}/chat/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        // remove loading UI
+        removeLoading(loadingId);
+
+        // parse response (tolerant to different backend keys)
+        let data = null;
+        try { data = await res.json(); } catch (e) { data = null; }
+
+        if (!res.ok) {
+          // attempt to show message from server
+          let errMsg = 'Sorry, something went wrong.';
+          if (data && data.message) errMsg = data.message;
+          addMessage(errMsg, 'author');
+          history.push({ role: 'author', content: errMsg });
+          saveHistory(history);
+          return;
+        }
+
+        // tolerate keys: response, answer, output, text
+        const response = ((data && (data.response || data.answer || data.output || data.text)) || '(No response)').toString().trim();
+
+        addMessage(response, 'author');
+        history.push({ role: 'author', content: response });
+        saveHistory(history);
+
+      } catch (e) {
+        removeLoading(loadingId);
+        const errText = 'Connection error. Is the server running?';
+        addMessage(errText, 'author');
+        history.push({ role: 'author', content: errText });
+        saveHistory(history);
+      }
+    }
+
+    // Add message to UI
+    // options: { persist: true/false } — if persist=false we won't call saveHistory (used during initial render)
+    function addMessage(text, role = 'author', options = { persist: true }) {
+      const messages = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+
+      if (role === 'author') {
+        // author label + escaped text
+        const label = document.createElement('div');
+        label.className = 'author-label';
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', 'ghost');
+        label.appendChild(icon);
+        const labelText = document.createElement('span');
+        labelText.textContent = "Author's Ghost";
+        label.appendChild(labelText);
+
+        contentDiv.appendChild(label);
+
+        const textNode = document.createElement('div');
+        textNode.innerHTML = escapeHtml(text);
+        contentDiv.appendChild(textNode);
+      } else {
+        // user bubble
+        const textNode = document.createElement('div');
+        textNode.innerHTML = escapeHtml(text);
+        contentDiv.appendChild(textNode);
+      }
+
+      div.appendChild(contentDiv);
+      messages.appendChild(div);
+
+      // refresh lucide icons for any new <i data-lucide> tags
+      lucide.createIcons();
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function showLoading() {
+      const messages = document.getElementById('messages');
+      const id = uniqueId('loading');
+      const div = document.createElement('div');
+      div.className = 'message author';
+      div.id = id;
+
+      div.innerHTML = `
+        <div class="message-content">
+          <div class="loading">
+            <i data-lucide="ghost" style="width:16px;height:16px"></i>
+            Channeling the author...
+            <div class="loading-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      `;
+      messages.appendChild(div);
+      lucide.createIcons();
+      messages.scrollTop = messages.scrollHeight;
+      return id;
+    }
+
+    function removeLoading(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    // Extra: allow clearing history manually (dev helper). Not exposed in UI by default.
+    function clearHistory() {
+      history = [];
+      saveHistory(history);
+      // remove all message nodes and re-show welcome
+      const messages = document.getElementById('messages');
+      messages.innerHTML = document.getElementById('welcome') ? document.getElementById('welcome').outerHTML : '';
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>
