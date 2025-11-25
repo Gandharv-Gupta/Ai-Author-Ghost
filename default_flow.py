@@ -1,26 +1,23 @@
-from fastapi.responses import StreamingResponse
-from groq import stream_llm_response
-# Streaming chat endpoint with debug
-from fastapi.responses import StreamingResponse
-from groq import stream_llm_response
-
-from fastapi.responses import RedirectResponse
+# FastAPI imports
+from fastapi import FastAPI, UploadFile, File, Form, Body
+from fastapi.responses import StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional
+from pydantic import BaseModel
+
+# Project imports
 from process_pdf import ingest_pdf
-from groq import generate_llm_response
 from prompt_handler import set_llm_prompt
 from utils import query_chroma
-import json
 
+# Groq imports
+from groq import stream_llm_response, generate_llm_response
+
+# Standard library
 import os
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+import json
 import shutil
 
-
-from typing import List, Optional
-from fastapi import Body
-from pydantic import BaseModel
 
 app = FastAPI()
 
