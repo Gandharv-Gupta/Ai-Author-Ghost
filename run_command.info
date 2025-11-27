@@ -4,3 +4,6 @@ run frontend:(in .venv)
 
 run backend:(in .venv)
 - uvicorn default_flow:app --reload
+
+Latest run command:(To run both frontend and the backend)
+- uvicorn default_flow:app --host 0.0.0.0 --port 8000

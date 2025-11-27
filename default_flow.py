@@ -4,6 +4,11 @@ from fastapi.responses import StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
+from fastapi.responses import FileResponse
+
+
+from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
 
 # Project imports
 from process_pdf import ingest_pdf
@@ -19,7 +24,13 @@ import json
 import shutil
 
 
+
 app = FastAPI()
+
+# ... your existing API routes ...
+
+# Serve static files (e.g., frontend.html at /static/frontend.html)
+
 
 class ChatRequest(BaseModel):
 	question: str
@@ -33,6 +44,15 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+#Mounting static files on the root path(Not swagger), to serve the .html files directly
+
+app.mount("/static", StaticFiles(directory=".", html=True), name="static")
+
+#End poitn to serve the frontend.html file
+@app.get("/")
+def read_index():
+    return FileResponse("frontend.html")
 
 
 # Streaming chat endpoint
@@ -74,9 +94,6 @@ async def chat_stream(request: ChatRequest):
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
-@app.get("/")
-async def root():
-    return RedirectResponse(url="/docs")
 
 # Endpoint to upload and ingest a PDF
 @app.post("/upload_pdf/")
