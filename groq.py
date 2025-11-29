@@ -35,7 +35,7 @@ def generate_llm_response(system_prompt: str, max_tokens: int = 512, temperature
     return data["choices"][0]["message"]["content"]
 
 # Streaming version for FastAPI endpoints
-def stream_llm_response(system_prompt: str, max_tokens: int = 80, temperature: float = 0.1):
+def stream_llm_response(system_prompt: str, max_tokens: int = 512, temperature: float = 0.1):
     if not GROQ_API_KEY:
         raise RuntimeError("❌ GROQ_API_KEY not set in environment variables.")
 
@@ -52,21 +52,36 @@ def stream_llm_response(system_prompt: str, max_tokens: int = 80, temperature: f
         "stream": True
     }
 
+    print("[GROQ] Sending streaming request...")
     with requests.post(GROQ_COMPLETION_URL, headers=headers, json=payload, stream=True) as response:
+        print(f"[GROQ] Response status: {response.status_code}")
         if response.status_code != 200:
-            raise RuntimeError(f"Groq Error {response.status_code}: {response.text}")
-        for line in response.iter_lines():
+            error_text = response.text
+            print(f"[GROQ ERROR] Status {response.status_code}: {error_text}")
+            raise RuntimeError(f"Groq Error {response.status_code}: {error_text}")
+        
+        print("[GROQ] Starting to read streaming lines...")
+        line_count = 0
+        for line in response.iter_lines(decode_unicode=False):
+            line_count += 1
             if line:
                 # OpenAI-style streaming: lines start with 'data: '
                 if line.startswith(b'data: '):
                     data = line[len(b'data: '):]
                     if data == b'[DONE]':
+                        print("[GROQ] Received [DONE] signal")
                         break
                     try:
                         chunk = json.loads(data)
                         delta = chunk["choices"][0]["delta"].get("content", "")
                         if delta:
+                            print(f"[GROQ] Yielding delta: {repr(delta)}")
                             yield delta
-                    except Exception:
+                        else:
+                            print(f"[GROQ] Empty delta in chunk: {chunk}")
+                    except Exception as parse_err:
+                        print(f"[GROQ] JSON parse error on line {line_count}: {parse_err}")
+                        print(f"[GROQ] Raw line: {line}")
                         continue
+        print(f"[GROQ] Finished reading {line_count} lines")
 

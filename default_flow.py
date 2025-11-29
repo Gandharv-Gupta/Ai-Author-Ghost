@@ -78,17 +78,26 @@ async def chat_stream(request: ChatRequest):
         print("\n--- LLM PROMPT ---\n", prompt, "\n--- END PROMPT ---\n")
 
         def word_stream():
-            buffer = ""
-            for chunk in stream_llm_response(prompt):
-                print("[DEBUG] LLM chunk:", repr(chunk))
-                buffer += chunk
-                while " " in buffer:
-                    word, buffer = buffer.split(" ", 1)
-                    yield word + " "
-            if buffer:
-                yield buffer
+            try:
+                print('[DEBUG] Starting stream_llm_response...')
+                stream_gen = stream_llm_response(prompt)
+                print('[DEBUG] Got generator, starting to iterate...')
+                chunk_count = 0
+                for delta in stream_gen:
+                    if delta:  # Only yield non-empty chunks
+                        chunk_count += 1
+                        print(f'[DEBUG STREAM] Chunk #{chunk_count}: {repr(delta[:50])}...' if len(delta) > 50 else f'[DEBUG STREAM] Chunk #{chunk_count}: {repr(delta)}')
+                        yield delta
+                print(f'[DEBUG] Stream finished. Total chunks: {chunk_count}')
+                if chunk_count == 0:
+                    yield "[Warning: No chunks received from LLM]"
+            except Exception as stream_err:
+                print(f'[ERROR in word_stream]: {stream_err}')
+                import traceback
+                traceback.print_exc()
+                yield f"[Error: {str(stream_err)}]"
 
-        return StreamingResponse(word_stream(), media_type="text/plain")
+        return StreamingResponse(word_stream(), media_type="text/plain; charset=utf-8")
     except Exception as e:
         print("[ERROR in /chat_stream/]:", e)
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})

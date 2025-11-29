@@ -233,6 +233,32 @@
       40% { transform: scale(1); }
     }
 
+    /* Streaming loading animation */
+    .stream-loading {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 8px 0;
+    }
+
+    .stream-loading .loading-dot {
+      width: 6px;
+      height: 6px;
+      background: rgba(168, 85, 247, 0.6);
+      border-radius: 50%;
+      animation: pulse 1.4s infinite ease-in-out;
+    }
+
+    .stream-loading .loading-dot:nth-child(1) { animation-delay: 0s; }
+    .stream-loading .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .stream-loading .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+
     /* Input Area */
     .input-area {
       padding: 1rem 1.5rem;
@@ -610,7 +636,7 @@
           history: history
         };
 
-        const res = await fetch(`${API_URL}/chat/`, {
+        const res = await fetch(`${API_URL}/chat_stream/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -619,25 +645,107 @@
         // remove loading UI
         removeLoading(loadingId);
 
-        // parse response (tolerant to different backend keys)
-        let data = null;
-        try { data = await res.json(); } catch (e) { data = null; }
-
         if (!res.ok) {
-          // attempt to show message from server
           let errMsg = 'Sorry, something went wrong.';
-          if (data && data.message) errMsg = data.message;
+          try { 
+            const data = await res.json(); 
+            if (data && data.message) errMsg = data.message;
+          } catch(e) {}
           addMessage(errMsg, 'author');
           history.push({ role: 'author', content: errMsg });
           saveHistory(history);
           return;
         }
 
-        // tolerate keys: response, answer, output, text
-        const response = ((data && (data.response || data.answer || data.output || data.text)) || '(No response)').toString().trim();
+        // Streaming output
+        const messages = document.getElementById('messages');
+        const div = document.createElement('div');
+        div.className = 'message author';
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+          // author label
+        const label = document.createElement('div');
+        label.className = 'author-label';
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', 'ghost');
+        label.appendChild(icon);
+        const labelText = document.createElement('span');
+        labelText.textContent = "Author's Ghost";
+        label.appendChild(labelText);
+        contentDiv.appendChild(label);
+        const textNode = document.createElement('div');
+        textNode.innerHTML = '';
+        contentDiv.appendChild(textNode);
+        
+        // Add loading animation
+        const loadingAnim = document.createElement('div');
+        loadingAnim.className = 'stream-loading';
+        loadingAnim.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+        contentDiv.appendChild(loadingAnim);
+        
+        div.appendChild(contentDiv);
+        messages.appendChild(div);
+        lucide.createIcons();
+        messages.scrollTop = messages.scrollHeight;
 
-        addMessage(response, 'author');
-        history.push({ role: 'author', content: response });
+        // Stream data as it comes in
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let partial = '';
+        let chunkCount = 0;
+        let firstChunkReceived = false;
+        
+        // Helper function to add a small delay
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        console.log('[FRONTEND] Starting to read stream...');
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              console.log(`[FRONTEND] Stream done. Total chunks received: ${chunkCount}`);
+              break;
+            }
+            
+            // Decode chunk (with stream: true to handle partial UTF-8)
+            const chunk = decoder.decode(value, { stream: true });
+            if (chunk) {
+              chunkCount++;
+              partial += chunk;
+              
+              // Hide loading animation on first chunk
+              if (!firstChunkReceived) {
+                firstChunkReceived = true;
+                loadingAnim.style.display = 'none';
+              }
+              
+              // Update UI immediately as each chunk arrives
+              textNode.innerHTML = escapeHtml(partial);
+              messages.scrollTop = messages.scrollHeight;
+              
+              // Add a small delay to slow down the streaming (50ms = slower, more readable)
+              await sleep(50);
+            }
+          }
+          
+          // Hide loading animation if no chunks were received
+          if (!firstChunkReceived) {
+            loadingAnim.style.display = 'none';
+          }
+          
+          // Final decode for any remaining bytes
+          const remaining = decoder.decode();
+          if (remaining) {
+            partial += remaining;
+            textNode.innerHTML = escapeHtml(partial);
+            messages.scrollTop = messages.scrollHeight;
+          }
+        } catch (streamErr) {
+          console.error('[FRONTEND] Streaming error:', streamErr);
+          textNode.innerHTML = escapeHtml(partial + '\n[Stream interrupted]');
+        }
+        // Save streamed response
+        history.push({ role: 'author', content: partial });
         saveHistory(history);
 
       } catch (e) {
