@@ -3,3 +3,12 @@ __pycache__
 .venv
 chroma_db
 chromadb_store
+*.pyc
+*.pyo
+*.pyd
+.git
+.gitignore
+README.md
+.vscode
+.idea
+*.log

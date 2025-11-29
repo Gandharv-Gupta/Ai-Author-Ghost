@@ -9,4 +9,3 @@ FASTAPI>=0.85.1
 uvicorn>=0.18.2
 pydantic>=1.10.2
 python-multipart
-streamlit>=1.22.0
