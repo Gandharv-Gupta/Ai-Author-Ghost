@@ -7,3 +7,6 @@ run backend:(in .venv)
 
 Latest run command:(To run both frontend and the backend)
 - uvicorn default_flow:app --host 0.0.0.0 --port 8000
+
+Docker command:
+- docker run --env-file .env -p 8000:8000 <image name>
